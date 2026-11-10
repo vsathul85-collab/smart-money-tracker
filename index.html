@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Tracker PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4A90E2">
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f4f7f6; padding: 16px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
+        .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .card { background: #eef2f5; padding: 12px; border-radius: 8px; text-align: center; }
+        .card h3 { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .card p { font-size: 16px; font-weight: bold; color: #2c3e50; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        button { background-color: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        button:hover { background-color: #219150; }
+        .rule-container { background: #fdf6ec; border-left: 4px solid #e67e22; padding: 12px; border-radius: 6px; margin: 20px 0; }
+        .rule-title { font-weight: bold; color: #d35400; margin-bottom: 8px; }
+        .list-section { margin-top: 20px; }
+        .list-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .expense { color: #e74c3c; }
+        .income { color: #27ae60; }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-secondary { background: #2980b9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Finance Tracker (PWA)</h1>
+        
+        <div class="cards">
+            <div class="card">
+                <h3>Income</h3>
+                <p id="total-income">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Expenses</h3>
+                <p id="total-expense">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Balance</h3>
+                <p id="total-balance">₹0</p>
+            </div>
+        </div>
+
+        <div class="rule-container">
+            <div class="rule-title">📊 50-30-20 Budget Target</div>
+            <p><strong>Needs (50%):</strong> ₹<span id="target-needs">0</span></p>
+            <p><strong>Wants (30%):</strong> ₹<span id="target-wants">0</span></p>
+            <p><strong>Savings/EMI (20%):</strong> ₹<span id="target-savings">0</span></p>
+        </div>
+
+        <form id="tracker-form">
+            <div class="form-group">
+                <label>Type</label>
+                <select id="type">
+                    <option value="income">Income (വരവ്)</option>
+                    <option value="expense">Expense (ചെലവ്)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="category">
+                    <option value="Needs">Needs (അത്യാവശ്യം - 50%)</option>
+                    <option value="Wants">Wants (ആഗ്രഹങ്ങൾ - 30%)</option>
+                    <option value="Savings/EMI">Savings / EMI (സേവിങ്സ്/കടം - 20%)</option>
+                    <option value="Income">Salary / Income</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Amount (₹)</label>
+                <input type="number" id="amount" required placeholder="Ex: 500">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="desc" placeholder="Ex: Groceries / Rent">
+            </div>
+            <button type="submit">Add Entry</button>
+        </form>
+
+        <div class="btn-group">
+            <button class="btn-secondary" onclick="exportCSV()">Export CSV</button>
+        </div>
+
+        <div class="list-section">
+            <h3 style="margin-bottom: 10px;">Recent Transactions</h3>
+            <div id="transaction-list"></div>
+        </div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+
+        function updateUI() {
+            const list = document.getElementById('transaction-list');
+            list.innerHTML = '';
+            
+            let income = 0, expense = 0;
+
+            transactions.forEach((t) => {
+                if (t.type === 'income') income += parseFloat(t.amount);
+                if (t.type === 'expense') expense += parseFloat(t.amount);
+
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `<span>${t.desc} (${t.category})</span><span class="${t.type}">₹${t.amount}</span>`;
+                list.appendChild(item);
+            });
+
+            const balance = income - expense;
+            document.getElementById('total-income').innerText = '₹' + income;
+            document.getElementById('total-expense').innerText = '₹' + expense;
+            document.getElementById('total-balance').innerText = '₹' + balance;
+
+            // 50-30-20 Rule Calculations based on Income
+            document.getElementById('target-needs').innerText = income * 0.5;
+            document.getElementById('target-wants').innerText = income * 0.3;
+            document.getElementById('target-savings').innerText = income * 0.2;
+
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+        }
+
+        document.getElementById('tracker-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const type = document.getElementById('type').value;
+            const category = document.getElementById('category').value;
+            const amount = document.getElementById('amount').value;
+            const desc = document.getElementById('desc').value;
+
+            transactions.push({ type, category, amount, desc, date: new Date().toLocaleDateString() });
+            updateUI();
+            e.target.reset();
+        });
+
+        function exportCSV() {
+            let csv = 'Type,Category,Amount,Description,Date\n';
+            transactions.forEach(t => {
+                csv += `${t.type},${t.category},${t.amount},"${t.desc}",${t.date}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'finance_report.csv');
+            a.click();
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>

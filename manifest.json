@@ -1,0 +1,15 @@
+{
+  "short_name": "FinancePWA",
+  "name": "Personal Finance Tracker PWA",
+  "icons": [
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#4A90E2",
+  "theme_color": "#4A90E2",
+  "display": "standalone"
+}
